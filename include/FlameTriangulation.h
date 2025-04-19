@@ -13,7 +13,7 @@ private:
     
     // Sensor characteristics
     const float sensorAngleLimit = 30.0; // Half of 60-degree detection angle
-    const int threshold = 5;            // Detection threshold (raw value difference)
+    const int threshold = 100;            // Detection threshold (raw value difference)
     
     // Raw and processed sensor readings
     int rawReading1;
@@ -38,7 +38,7 @@ private:
     unsigned int validSampleCount;
     unsigned long cooldownEndTime;
     static const int MIN_SAMPLES_FOR_DRIFT = 50;
-    static const int DRIFT_WARNING_THRESHOLD = 2;
+    static const int DRIFT_WARNING_THRESHOLD = 75;
     
     // Methods
     void updateBuffers(int r1, int r2, int r3);
