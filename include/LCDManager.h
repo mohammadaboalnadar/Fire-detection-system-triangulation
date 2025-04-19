@@ -14,6 +14,7 @@ private:
     unsigned long lastLCDUpdate;
     bool lastFlameState;
     float lastAngle;
+    bool dhtInitialized;
 };
 
 #endif // LCD_MANAGER_H

@@ -7,6 +7,7 @@
 #include "../include/PumpControl.h"
 #include "../include/AmbientMonitor.h"
 #include "../include/LCDManager.h"
+#include "../include/SirenLEDController.h"
 
 // Pin definitions
 #define SENSOR1_PIN A2  // Right sensor
@@ -20,6 +21,11 @@
 
 // Pump control relay
 #define PUMP_RELAY_PIN 6
+
+// Siren LED pins
+#define SIREN_LED1_PIN 4
+#define SIREN_LED2_PIN 5
+#define SIREN_INTERVAL 300 // ms between siren LED toggles
 
 // Servo scanning parameters
 #define SCAN_MIN_ANGLE 30
@@ -47,6 +53,7 @@ PumpControl pumpControl(
     PUMP_RELAY_PIN, PUMP_ANGLE_THRESHOLD, PUMP_PULSE_DURATION, PUMP_PULSE_DELAY);
 AmbientMonitor ambientMonitor(AMBIENT_CHECK_INTERVAL);
 LCDManager lcdManager(LCD_REFRESH_INTERVAL);
+SirenLEDController sirenLEDController;
 
 // Function prototypes
 void performCalibration();
@@ -63,6 +70,7 @@ void setup() {
   initializeBuzzer();
   servoControl.begin(90);
   pumpControl.begin();
+  sirenLEDController.setup(SIREN_LED1_PIN, SIREN_LED2_PIN);
   Serial.println(F("Fire Detection Triangulation System"));
   Serial.println(F("----------------------------------"));
   Serial.println(F("Performing initial calibration..."));
@@ -94,6 +102,7 @@ void loop() {
   servoControl.update(flameDetected, angle);
   pumpControl.update(flameDetected, servoControl.getCurrentAngle(), servoControl.getTargetAngle());
   lcdManager.update(flameDetected, angle, flameSensor);
+  sirenLEDController.update(flameDetected);
   updateBuzzer(flameDetected);
 
   // Debug info (keep as is, or move to a DebugManager if desired)

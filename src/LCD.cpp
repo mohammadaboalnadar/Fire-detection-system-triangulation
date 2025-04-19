@@ -3,6 +3,16 @@
 // Create LCD object
 LiquidCrystal_I2C lcd(LCD_I2C_ADDR, LCD_COLS, LCD_ROWS);
 
+// Create DHT sensor object
+DHT dht(DHTPIN, DHTTYPE);
+
+// DHT sensor variables
+float temperature = 0.0;
+float humidity = 0.0;
+unsigned long lastDHTRead = 0;
+unsigned long lastDHTDisplayToggle = 0;
+bool showTemperature = true; // Toggle between temperature and humidity display
+
 // LCD display state tracking
 struct LCDState {
   char buffer[LCD_ROWS][LCD_COLS + 1]; // Current buffer (+1 for null terminator)
@@ -53,6 +63,54 @@ void initializeLCD() {
   
   // Show startup message (force immediate display)
   showStartupMessage();
+}
+
+/**
+ * Initialize the DHT sensor
+ */
+void initializeDHT() {
+  dht.begin();
+  // Take initial readings
+  updateDHTReadings();
+}
+
+/**
+ * Update temperature and humidity readings from DHT sensor
+ */
+void updateDHTReadings() {
+  unsigned long currentTime = millis();
+  if (currentTime - lastDHTRead >= DHT_READ_INTERVAL) {
+    lastDHTRead = currentTime;
+    
+    // Read temperature and humidity
+    float newHumidity = dht.readHumidity();
+    float newTemperature = dht.readTemperature();
+    
+    // Check if read failed and keep previous values if so
+    if (!isnan(newHumidity) && !isnan(newTemperature)) {
+      humidity = newHumidity;
+      temperature = newTemperature;
+      Serial.print(F("DHT Update - Temp: "));
+      Serial.print(temperature);
+      Serial.print(F("°C, Humidity: "));
+      Serial.print(humidity);
+      Serial.println(F("%"));
+    }
+  }
+}
+
+/**
+ * Get current temperature reading
+ */
+float getTemperature() {
+  return temperature;
+}
+
+/**
+ * Get current humidity reading
+ */
+float getHumidity() {
+  return humidity;
 }
 
 /**
@@ -180,6 +238,46 @@ void updateLCD(bool flameDetected, float angle) {
     bufferPrint(1, 7 + strlen(anglePtr), " deg");
   } else {
     bufferPrint(1, 0, "No threat");
+  }
+}
+
+/**
+ * Update LCD with temperature and humidity information when no fire detected
+ */
+void updateLCDWithTempHumidity(bool flameDetected, float angle) {
+  // Update DHT sensor readings first
+  updateDHTReadings();
+  
+  // If there's a fire, use the standard display
+  if (flameDetected) {
+    updateLCD(flameDetected, angle);
+    return;
+  }
+  
+  // Otherwise, show alternating temperature and humidity display
+  clearLCDBuffer();
+  
+  // First row: Status message
+  bufferPrint(0, 0, "Monitoring...");
+  
+  // Second row: Alternate between temperature and humidity
+  unsigned long currentTime = millis();
+  if (currentTime - lastDHTDisplayToggle >= DHT_DISPLAY_TOGGLE_INTERVAL) {
+    lastDHTDisplayToggle = currentTime;
+    showTemperature = !showTemperature; // Toggle between temp and humidity
+  }
+  
+  char valueStr[8];
+  if (showTemperature) {
+    dtostrf(temperature, 4, 1, valueStr);
+    bufferPrint(1, 0, "Temp: ");
+    bufferPrint(1, 6, valueStr);
+    bufferPrint(1, 6 + strlen(valueStr), " C");
+  } else {
+    dtostrf(humidity, 4, 1, valueStr);
+    bufferPrint(1, 0, "Humidity: ");
+    bufferPrint(1, 10, valueStr);
+    bufferPrint(1, 10 + strlen(valueStr), "%");
   }
 }
 
@@ -377,4 +475,4 @@ void scrollLongText(const String& text, int row, int delayMs) {
       scrollPosition = 0; // Reset with a small pause at the beginning
     }
   }
-} 
+}
